@@ -603,6 +603,42 @@ describe('ConnectAd Adapter', function () {
         expect(bids[0].native.ortb).to.exist;
       }
     });
+
+    it('should handle native requests where imp.native.request is a string', function () {
+      const nativeBidRequests = [{
+        bidder: 'connectad',
+        params: { siteId: 123456, networkId: 123456 },
+        adUnitCode: 'native-slot',
+        mediaTypes: { native: { title: { required: true } } },
+        bidId: 'native-imp'
+      }];
+
+      const nativeResponse = {
+        body: {
+          id: 'native-auction',
+          seatbid: [{
+            bid: [{
+              id: 'bid-native',
+              impid: 'native-imp',
+              price: 5.50,
+              adm: JSON.stringify({
+                assets: [
+                  { id: 0, title: { text: 'Test Native Ad' } }
+                ]
+              }),
+              crid: 'creative-native',
+              mtype: 4
+            }]
+          }]
+        }
+      };
+
+      const request = spec.buildRequests(nativeBidRequests, bidderRequest);
+      request.data.imp[0].native = { request: JSON.stringify({ assets: [{ id: 10, title: { len: 80 } }] }) };
+      const bids = spec.interpretResponse(nativeResponse, request);
+
+      expect(bids).to.be.an('array').with.lengthOf(1);
+    });
   });
 
   describe('getUserSyncs', () => {
@@ -656,11 +692,11 @@ describe('ConnectAd Adapter', function () {
         }
       },
       {
-        name: 'should prioritize iframe over image for user sync',
-        arguments: [{ iframeEnabled: true, pixelEnabled: true }, {}, null],
+        name: 'iframe/gpp',
+        arguments: [{ iframeEnabled: true, pixelEnabled: false }, {}, null, null, { gppString: 'test-gpp', applicableSections: [1, 2] }],
         expect: {
           type: 'iframe',
-          pixels: ['https://sync.connectad.io/iFrameSyncer?']
+          pixels: ['https://sync.connectad.io/iFrameSyncer?gpp=test-gpp&gpp_sid=1%2C2&']
         }
       }
     ];
@@ -676,6 +712,17 @@ describe('ConnectAd Adapter', function () {
         }
       });
     }
+
+    it('should add coppa to sync url when config coppa is true', function () {
+      config.setConfig({ coppa: true });
+      const result = spec.getUserSyncs({ iframeEnabled: true }, {}, null);
+      expect(result[0].url).to.equal('https://sync.connectad.io/iFrameSyncer?coppa=1&');
+    });
+
+    it('should return undefined and warn if no syncs enabled', function () {
+      const result = spec.getUserSyncs({ iframeEnabled: false, pixelEnabled: false }, {}, null);
+      expect(result).to.be.undefined;
+    });
   });
 
   describe('nurl / billing is server-side only', function () {

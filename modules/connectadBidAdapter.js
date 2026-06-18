@@ -209,13 +209,6 @@ export const spec = {
     let response = serverResponse.body;
     const ortbRequest = bidRequest.data;
     let request = ortbRequest;
-    if (typeof request === 'string') {
-      try {
-        request = JSON.parse(request);
-      } catch (e) {
-        logWarn('ConnectAd: Failed to parse bidRequest.data string', e);
-      }
-    }
 
     if (Array.isArray(response)) {
       response = {
